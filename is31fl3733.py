@@ -52,7 +52,7 @@ class IS31FL3733(object):
 
     def setPixelPWM(self,row,col,val):
         pixel = row*16 + col
-        pixels[row][col] = val
+        self.pixels[row][col] = val
         self.selectPage(PAGE_LED_PWM)
         self.write(pixel,val)
 
