@@ -6,7 +6,7 @@ import time
 
 class IS31FL3733(object):
 
-    address = 0xA0
+    address = 0x50
     busnum = 0
     syncmode = REGISTER_FUNCTION_CONFIGURATION_SYNC_CLOCK_SINGLE
     breathing = False
