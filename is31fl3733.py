@@ -38,6 +38,7 @@ class IS31FL3733(object):
               setattr(self,key,value)
 
         self.smbus = SMBus(self.busnum)
+        self.reset()
         self.setContrast(255)
 
     def selectPage(self,value):
