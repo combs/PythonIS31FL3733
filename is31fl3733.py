@@ -38,12 +38,18 @@ class IS31FL3733(object):
               setattr(self,key,value)
 
         self.smbus = SMBus(self.busnum)
+        self.setContrast(255)
 
     def selectPage(self,value):
         if self.currentPage != value:
             self.write(REGISTER_COMMAND_WRITE_LOCK,COMMAND_WRITE_LOCK_DISABLE_ONCE)
             self.write(REGISTER_COMMAND,value)
             self.currentPage = value
+
+    def setContrast(self,value):
+        self.selectPage(REGISTER_COMMAND)
+        self.write(REGISTER_FUNCTION_CURRENT_CONTROL,value)
+
 
     def reset(self):
         self.write(REGISTER_COMMAND_WRITE_LOCK,COMMAND_WRITE_LOCK_DISABLE_ONCE)
@@ -71,5 +77,5 @@ class IS31FL3733(object):
 
 
 if __name__ == '__main__':
-    matrix = IS31FL3733()
+    matrix = IS31FL3733(address=0x5F)
     matrix.setPixelPWM(4,1,128)
