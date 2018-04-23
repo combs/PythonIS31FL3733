@@ -8,12 +8,12 @@ import time
 class IS31FL3733(object):
 
     address = 0x50
-    busnum = 0
+    busnum = 10
     syncmode = REGISTER_FUNCTION_CONFIGURATION_SYNC_CLOCK_SINGLE
     breathing = 0
     softwareshutdown = 0
     currentPage = PAGE_LED_ON_OFF
-    pixels = [[0] * 12 for i in range(16)]
+    pixels = [[0] * 16 for i in range(12)]
     triggerOpenShortDetection = 1
 
     def __del__(self):
@@ -63,7 +63,7 @@ class IS31FL3733(object):
 
     def enableAllPixels(self):
         self.selectPage(PAGE_LED_ON_OFF)
-        self.writeBlock(0, [ 255 ] * 0x17 )
+        self.writeBlock(0, [ 255 ] * 0x18 )
         self.selectPage(PAGE_LED_PWM)
         for i in range(0,12):
             self.writeBlock(i*16,[ 255 ] * (16))
@@ -76,6 +76,7 @@ class IS31FL3733(object):
     def setPixelPWM(self,row,col,val):
         pixel = row*16 + col
         self.pixels[row][col] = val
+        print(row*16,col,"=",row*16 + col)
         self.selectPage(PAGE_LED_PWM)
         self.write(pixel,val)
 
@@ -89,7 +90,7 @@ class IS31FL3733(object):
         self.smbus.write_byte_data(self.address,register,value)
 
     def writeBlock(self,register,value):
-        self.smbus.write_i2c_block_data(self.address,register,value) 
+        self.smbus.write_i2c_block_data(self.address,register,value)
 
     def read(self,register):
         return self.smbus.read_byte_data(self.address,register)
@@ -110,5 +111,33 @@ class IS31FL3733(object):
 if __name__ == '__main__':
     matrix = IS31FL3733(address=0x5F)
     matrix.enableAllPixels()
+    time.sleep(2)
+    for value in range(10):
+        iter = 1
+        for row in range(12):
+            for col in range(16):
+                matrix.setPixelPWM(row,col, value)
+                iter += 1
+
+    for row in range(12):
+        for col in range(16):
+            matrix.setPixelPWM(row,col, 2)
+
+    for i in range(11):
+        matrix.setPixelPWM(i,i,40)
+    for i in range(11):
+        matrix.setPixelPWM(11-i,i,20)
+    matrix.setPixelPWM(0,0,100)
+    matrix.setPixelPWM(0,5,100)
+    matrix.setPixelPWM(1,6,100)
+    matrix.setPixelPWM(0,10,100)
+    matrix.setPixelPWM(11,11,100)
+    matrix.setPixelPWM(11,11,100)
+    matrix.setPixelPWM(6,11,100)
+
+    # matrix.setPixelPWM(3,12,3)
+    time.sleep(1);
+    print("missing pixels")
     matrix.getOpenPixels()
+    print("short pixels")
     matrix.getShortPixels()
