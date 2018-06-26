@@ -82,7 +82,7 @@ class IS31FL3733(object):
             self.write(pixel,val)
 
     def setAllPixelsPWM(self,values):
-        print("length is",len(values))
+        # print("length is",len(values))
         self.selectPage(PAGE_LED_PWM)
 
         # TODO set the values in the array
