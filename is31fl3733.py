@@ -73,12 +73,28 @@ class IS31FL3733(object):
 # This needs work
 
 
-    def setPixelPWM(self,row,col,val):
+    def setPixelPWM(self,row,col,val,immediate=True):
         pixel = row*16 + col
         self.pixels[row][col] = val
-        print(row*16,col,"=",row*16 + col)
+        # print(row*16,col,"=",row*16 + col)
+        if immediate:
+            self.selectPage(PAGE_LED_PWM)
+            self.write(pixel,val)
+
+    def setAllPixelsPWM(self,values):
+        print("length is",len(values))
         self.selectPage(PAGE_LED_PWM)
-        self.write(pixel,val)
+
+        # TODO set the values in the array
+        iter = 0
+        for chunk in self.chunks(values,32):
+            self.writeBlock(iter*32,chunk)
+            iter += 1
+
+    def setAllPixels(self,values):
+        print("length is",len(values))
+        self.selectPage(PAGE_LED_ON_OFF)
+        self.writeBlock(0,values)
 
     def setConfiguration(self):
         self.selectPage(PAGE_FUNCTION)
@@ -105,39 +121,98 @@ class IS31FL3733(object):
         for i in range(0x30,0x47):
             print(self.read(i))
 
+    def chunks(self, values, length):
+        for i in range(0, len(values), length):
+            yield values[i:i + length]
 
+    def writeBuffer(self):
+        flat_list = [item for sublist in self.pixels for item in sublist]
+        self.setAllPixelsPWM(0,flat_list)
+
+    def sevenSegment(self, row, col, value, brightness=0):
+        if brightness:
+            self.selectPage(PAGE_LED_PWM)
+            self.writeBlock(0,[brightness]*8)
+        self.selectPage(PAGE_LED_ON_OFF)
+        bits = 0B00000000
+        if value == 0:
+            bits = 0B00111111
+        elif value == 1:
+            bits = 0B00000110
+        elif value == 2:
+            bits = 0B01011011
+        elif value == 3:
+            bits = 0B01001111
+        elif value == 4:
+            bits = 0B01100110
+        elif value == 5:
+            bits = 0B01101101
+        elif value == 6:
+            bits = 0B01111101
+        elif value == 7:
+            bits = 0B00000111
+        elif value == 8:
+            bits = 0B01111111
+        elif value == 9:
+            bits = 0B01101111
+        print(value)
+        print(str(bits))
+        # bits = 0b11111111 - bits
+        self.write(row*2 + col,bits)
 
 
 if __name__ == '__main__':
-    matrix = IS31FL3733(address=0x5F)
-    matrix.enableAllPixels()
-    time.sleep(2)
-    for value in range(10):
-        iter = 1
-        for row in range(12):
-            for col in range(16):
-                matrix.setPixelPWM(row,col, value)
-                iter += 1
+    for address in range(0x50,0x60):
+        print("trying",address)
+        try:
+            matrix = IS31FL3733(address=address)
+            matrix.enableAllPixels()
+            time.sleep(2)
+            matrix.setAllPixelsPWM([0]*192)
+            # for value in range(8):
+            #     matrix.setPixelPWM(0,value,64)
+            #     time.sleep(1)
+            #
+            # time.sleep(2)
 
-    for row in range(12):
-        for col in range(16):
-            matrix.setPixelPWM(row,col, 2)
+            for value in range(10):
+                matrix.sevenSegment(0,0,value)
+                time.sleep(1)
 
-    for i in range(11):
-        matrix.setPixelPWM(i,i,40)
-    for i in range(11):
-        matrix.setPixelPWM(11-i,i,20)
-    matrix.setPixelPWM(0,0,100)
-    matrix.setPixelPWM(0,5,100)
-    matrix.setPixelPWM(1,6,100)
-    matrix.setPixelPWM(0,10,100)
-    matrix.setPixelPWM(11,11,100)
-    matrix.setPixelPWM(11,11,100)
-    matrix.setPixelPWM(6,11,100)
+            time.sleep(2)
 
-    # matrix.setPixelPWM(3,12,3)
-    time.sleep(1);
-    print("missing pixels")
-    matrix.getOpenPixels()
-    print("short pixels")
-    matrix.getShortPixels()
+            for value in range(10):
+                # iter = 1
+
+                matrix.setAllPixelsPWM([value]*192)
+                #
+                # for row in range(12):
+                #     for col in range(16):
+                #         matrix.setPixelPWM(row,col, value)
+                #         iter += 1
+
+            for row in range(12):
+                for col in range(16):
+                    matrix.setPixelPWM(row,col, 2)
+
+            for i in range(11):
+                matrix.setPixelPWM(i,i,40)
+            for i in range(11):
+                matrix.setPixelPWM(11-i,i,20)
+            matrix.setPixelPWM(0,0,100)
+            matrix.setPixelPWM(0,5,100)
+            matrix.setPixelPWM(1,6,100)
+            matrix.setPixelPWM(0,10,100)
+            matrix.setPixelPWM(11,11,100)
+            matrix.setPixelPWM(11,11,100)
+            matrix.setPixelPWM(6,11,100)
+
+            # matrix.setPixelPWM(3,12,3)
+            time.sleep(1);
+            print("missing pixels")
+            matrix.getOpenPixels()
+            print("short pixels")
+            matrix.getShortPixels()
+        except Exception as e:
+            print("Address",address,"error:",e)
+            time.sleep(0.5)
