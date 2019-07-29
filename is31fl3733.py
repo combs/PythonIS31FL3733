@@ -1,14 +1,14 @@
 from __future__ import print_function
 
 from constants import *
-from smbus2 import SMBus
+from smbus2 import SMBus, i2c_msg
 import time
 
 
 class IS31FL3733(object):
 
     address = 0x50
-    busnum = 10
+    busnum = 1
     syncmode = REGISTER_FUNCTION_CONFIGURATION_SYNC_CLOCK_SINGLE
     breathing = 0
     softwareshutdown = 0
@@ -85,11 +85,25 @@ class IS31FL3733(object):
         # print("length is",len(values))
         self.selectPage(PAGE_LED_PWM)
 
+        # messageAddress = i2c_msg.write(self.address, [0])
+        # messageToSend = i2c_msg.write(self.address, values)
+        # self.smbus.i2c_rdwr(messageAddress,messageToSend)
+
         # TODO set the values in the array
+
         iter = 0
+        messages = []
+
         for chunk in self.chunks(values,32):
-            self.writeBlock(iter*32,chunk)
+            # self.writeBlock(iter*32,chunk)
+            # dest = [iter * 32, *chunk]
+            chunk.insert(0, iter * 32)
+            messages.append(i2c_msg.write(self.address, chunk))
+            # messages.append(i2c_msg.write(self.address, chunk))
             iter += 1
+
+        self.smbus.i2c_rdwr(*messages)
+
 
     def setAllPixels(self,values):
         print("length is",len(values))
@@ -162,7 +176,7 @@ class IS31FL3733(object):
 
 
 if __name__ == '__main__':
-    for address in range(0x50,0x60):
+    for address in range(0x55,0x60):
         print("trying",address)
         try:
             matrix = IS31FL3733(address=address)
@@ -215,4 +229,4 @@ if __name__ == '__main__':
             matrix.getShortPixels()
         except Exception as e:
             print("Address",address,"error:",e)
-            time.sleep(0.5)
+            time.sleep(0.1)
