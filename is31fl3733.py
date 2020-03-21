@@ -4,6 +4,8 @@ from constants import *
 from smbus2 import SMBus, i2c_msg
 import time
 
+class IS31FL3733DeviceNotFound(IOError):
+    pass
 
 class IS31FL3733(object):
 
@@ -15,6 +17,17 @@ class IS31FL3733(object):
     currentPage = PAGE_LED_ON_OFF
     pixels = [[0] * 16 for i in range(12)]
     triggerOpenShortDetection = 1
+    DEBUG = False
+    lastDebug = ""
+    name = "IS31FL3733"
+
+    def debug(self, *args):
+        if self.DEBUG:
+            if not hasattr(self, "lastDebug"):
+                self.lastDebug = ""
+            if self.lastDebug != args:
+                print(self.name + ":", *args)
+            self.lastDebug = args
 
     def __del__(self):
         # self.smbus.close()
@@ -40,14 +53,63 @@ class IS31FL3733(object):
               setattr(self,key,value)
 
         self.smbus = SMBus(self.busnum)
+
+        try:
+            self.attemptDetection()
+        except IOError:
+            raise IS31FL3733DeviceNotFound('Could not communicate with device.')
+        except TypeError:
+            raise IS31FL3733DeviceNotFound('Device detection failed.')
+
         self.reset()
         self.setContrast(255)
-        self.triggerOpenShortDetection = 1
+        self.triggerOpenShortDetection = True
         self.setConfiguration()
+        self.debug("Initialized.")
+
+    def attemptDetection(self):
+
+        # REGISTER_INTERRUPT_STATUS defaults to 0, can only be 0-3
+        if self.read(REGISTER_INTERRUPT_STATUS) > 3:
+            raise TypeError('REGISTER_INTERRUPT_STATUS is an invalid value--is this IS31FL3733?')
+
+        # after any other command the write lock register should reset to 0
+        if self.read(REGISTER_COMMAND_WRITE_LOCK) != 0:
+            raise TypeError('REGISTER_COMMAND_WRITE_LOCK was not 0--is this IS31FL3733?')
+
+        # 0xC0 is not a readable address in any of the registers
+        # It doesn't return a read error, but does always return 0
+        if self.read(0xC0) != 0:
+            raise TypeError('Was able to read an address that should not be readable (0xC0)--is this IS31FL3733?')
+
+        # It accepts writes but returns 0 afterwards.
+        # So if this does otherwise, it's an EEPROM or something
+        try:
+            if self.read(0xC0) != 0:
+                self.write(0xC0, 0) # restore previous 0 value in case it matters
+                raise TypeError('Was able to write/read an address that should not be readable (0xC0)--is this IS31FL3733?')
+
+        except IOError:
+            # all's well.
+            pass
+
+        # later IS31FL37xx devices support this...
+
+        try:
+            idregister=self.read(REGISTER_ID)
+            if idregister != REGISTER_ID_VALUE_IS31FL3733:
+                raise TypeError('ID register value',idregister,'does not match IS31FL3733 value:',REGISTER_ID_VALUE_IS31FL3733)
+        except IOError:
+            # all's well.
+            pass
+
+
+        self.debug("IS31FL3733 device detected.")
+        return True
 
     def selectPage(self,value):
         if self.currentPage is not value:
-            print("changing page to",value,"from",self.currentPage)
+            self.debug("changing page to",value,"from",self.currentPage)
             self.write(REGISTER_COMMAND_WRITE_LOCK,COMMAND_WRITE_LOCK_DISABLE_ONCE)
             self.write(REGISTER_COMMAND,value)
             self.currentPage = value
@@ -59,7 +121,7 @@ class IS31FL3733(object):
     def reset(self):
         self.selectPage(PAGE_FUNCTION)
         self.currentPage = PAGE_LED_ON_OFF
-        print("reset got",self.read(REGISTER_FUNCTION_RESET))
+        self.debug("reset got",self.read(REGISTER_FUNCTION_RESET))
 
     def enableAllPixels(self):
         self.selectPage(PAGE_LED_ON_OFF)
@@ -76,13 +138,13 @@ class IS31FL3733(object):
     def setPixelPWM(self,row,col,val,immediate=True):
         pixel = row*16 + col
         self.pixels[row][col] = val
-        # print(row*16,col,"=",row*16 + col)
+        # self.debug(row*16,col,"=",row*16 + col)
         if immediate:
             self.selectPage(PAGE_LED_PWM)
             self.write(pixel,val)
 
     def setAllPixelsPWM(self,values):
-        # print("length is",len(values))
+        # self.debug("length is",len(values))
         self.selectPage(PAGE_LED_PWM)
 
         # messageAddress = i2c_msg.write(self.address, [0])
@@ -104,9 +166,8 @@ class IS31FL3733(object):
 
         self.smbus.i2c_rdwr(*messages)
 
-
     def setAllPixels(self,values):
-        print("length is",len(values))
+        self.debug("length is",len(values))
         self.selectPage(PAGE_LED_ON_OFF)
         self.writeBlock(0,values)
 
@@ -128,12 +189,12 @@ class IS31FL3733(object):
     def getOpenPixels(self):
         self.selectPage(PAGE_LED_ON_OFF)
         for i in range(0x18,0x2e):
-            print(self.read(i))
+            self.debug(self.read(i))
 
     def getShortPixels(self):
         self.selectPage(PAGE_LED_ON_OFF)
         for i in range(0x30,0x47):
-            print(self.read(i))
+            self.debug(self.read(i))
 
     def chunks(self, values, length):
         for i in range(0, len(values), length):
@@ -169,17 +230,17 @@ class IS31FL3733(object):
             bits = 0B01111111
         elif value == 9:
             bits = 0B01101111
-        print(value)
-        print(str(bits))
+        # self.debug(value)
+        # self.debug(str(bits))
         # bits = 0b11111111 - bits
         self.write(row*2 + col,bits)
 
 
 if __name__ == '__main__':
-    for address in range(0x55,0x60):
+    for address in range(0x50,0x60):
         print("trying",address)
         try:
-            matrix = IS31FL3733(address=address)
+            matrix = IS31FL3733(address=address,busnum=10)
             matrix.enableAllPixels()
             time.sleep(2)
             matrix.setAllPixelsPWM([0]*192)
