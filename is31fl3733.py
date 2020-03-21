@@ -187,6 +187,9 @@ class IS31FL3733(object):
         return self.smbus.read_byte_data(self.address,register)
 
     def getOpenPixels(self):
+        self.triggerOpenShortDetection = 1
+        self.setConfiguration()
+        time.sleep(0.01)
         self.selectPage(PAGE_LEDONOFF)
         returners = []
         for i in range(REGISTER_LEDONOFF_OPEN_START, REGISTER_LEDONOFF_OPEN_STOP + 1): # python range not inclusive
@@ -194,6 +197,9 @@ class IS31FL3733(object):
         return returners
 
     def getShortPixels(self):
+        self.triggerOpenShortDetection = 1
+        self.setConfiguration()
+        time.sleep(0.01)
         self.selectPage(PAGE_LEDONOFF)
         returners = []
         for i in range(REGISTER_LEDONOFF_SHORT_START, REGISTER_LEDONOFF_SHORT_STOP + 1): # python range not inclusive
