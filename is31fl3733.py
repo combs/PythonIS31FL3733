@@ -14,7 +14,7 @@ class IS31FL3733(object):
     syncmode = REGISTER_FUNCTION_CONFIGURATION_SYNC_CLOCK_SINGLE
     breathing = 0
     softwareshutdown = 0
-    currentPage = PAGE_LED_ON_OFF
+    currentPage = PAGE_LEDONOFF
     pixels = [[0] * 16 for i in range(12)]
     triggerOpenShortDetection = 1
     DEBUG = False
@@ -120,13 +120,13 @@ class IS31FL3733(object):
 
     def reset(self):
         self.selectPage(PAGE_FUNCTION)
-        self.currentPage = PAGE_LED_ON_OFF
+        self.currentPage = PAGE_LEDONOFF
         self.debug("reset got",self.read(REGISTER_FUNCTION_RESET))
 
     def enableAllPixels(self):
-        self.selectPage(PAGE_LED_ON_OFF)
+        self.selectPage(PAGE_LEDONOFF)
         self.writeBlock(0, [ 255 ] * 0x18 )
-        self.selectPage(PAGE_LED_PWM)
+        self.selectPage(PAGE_LEDPWM)
         for i in range(0,12):
             self.writeBlock(i*16,[ 255 ] * (16))
 
@@ -140,12 +140,12 @@ class IS31FL3733(object):
         self.pixels[row][col] = val
         # self.debug(row*16,col,"=",row*16 + col)
         if immediate:
-            self.selectPage(PAGE_LED_PWM)
+            self.selectPage(PAGE_LEDPWM)
             self.write(pixel,val)
 
     def setAllPixelsPWM(self,values):
         # self.debug("length is",len(values))
-        self.selectPage(PAGE_LED_PWM)
+        self.selectPage(PAGE_LEDPWM)
 
         # messageAddress = i2c_msg.write(self.address, [0])
         # messageToSend = i2c_msg.write(self.address, values)
@@ -168,7 +168,7 @@ class IS31FL3733(object):
 
     def setAllPixels(self,values):
         self.debug("length is",len(values))
-        self.selectPage(PAGE_LED_ON_OFF)
+        self.selectPage(PAGE_LEDONOFF)
         self.writeBlock(0,values)
 
     def setConfiguration(self):
@@ -187,14 +187,18 @@ class IS31FL3733(object):
         return self.smbus.read_byte_data(self.address,register)
 
     def getOpenPixels(self):
-        self.selectPage(PAGE_LED_ON_OFF)
-        for i in range(0x18,0x2e):
-            self.debug(self.read(i))
+        self.selectPage(PAGE_LEDONOFF)
+        returners = []
+        for i in range(REGISTER_LEDONOFF_OPEN_START, REGISTER_LEDONOFF_OPEN_STOP + 1): # python range not inclusive
+            returners.append(self.read(i))
+        return returners
 
     def getShortPixels(self):
-        self.selectPage(PAGE_LED_ON_OFF)
-        for i in range(0x30,0x47):
-            self.debug(self.read(i))
+        self.selectPage(PAGE_LEDONOFF)
+        returners = []
+        for i in range(REGISTER_LEDONOFF_SHORT_START, REGISTER_LEDONOFF_SHORT_STOP + 1): # python range not inclusive
+            returners.append(self.read(i))
+        return returners
 
     def chunks(self, values, length):
         for i in range(0, len(values), length):
@@ -206,9 +210,9 @@ class IS31FL3733(object):
 
     def sevenSegment(self, row, col, value, brightness=0):
         if brightness:
-            self.selectPage(PAGE_LED_PWM)
+            self.selectPage(PAGE_LEDPWM)
             self.writeBlock(0,[brightness]*8)
-        self.selectPage(PAGE_LED_ON_OFF)
+        self.selectPage(PAGE_LEDONOFF)
         bits = 0B00000000
         if value == 0:
             bits = 0B00111111
@@ -233,43 +237,38 @@ class IS31FL3733(object):
         # self.debug(value)
         # self.debug(str(bits))
         # bits = 0b11111111 - bits
-        self.write(row*2 + col,bits)
+        self.write(row*2 + col + REGISTER_LEDONOFF_ONOFF_START,bits)
 
 
 if __name__ == '__main__':
     for address in range(0x50,0x60):
         print("trying",address)
         try:
-            matrix = IS31FL3733(address=address,busnum=10)
+            matrix = IS31FL3733(address=address, busnum=10, DEBUG=True)
+            print("powering on all pixels")
             matrix.enableAllPixels()
             time.sleep(2)
+            print("powering off all pixels via PWM register")
             matrix.setAllPixelsPWM([0]*192)
-            # for value in range(8):
-            #     matrix.setPixelPWM(0,value,64)
-            #     time.sleep(1)
-            #
-            # time.sleep(2)
 
+            print("let's try some 7-segment values (looks scrambled on most devices)")
             for value in range(10):
+                print(value)
                 matrix.sevenSegment(0,0,value)
-                time.sleep(1)
+                time.sleep(0.5)
 
             time.sleep(2)
 
+            print("let's fade up from 0 to 10 on all pixels")
             for value in range(10):
-                # iter = 1
-
                 matrix.setAllPixelsPWM([value]*192)
-                #
-                # for row in range(12):
-                #     for col in range(16):
-                #         matrix.setPixelPWM(row,col, value)
-                #         iter += 1
 
+            print ("let's draw some rows and cols")
             for row in range(12):
                 for col in range(16):
                     matrix.setPixelPWM(row,col, 2)
 
+            print("let's set some arbitrary pixels (check for adjacent shorts)")
             for i in range(11):
                 matrix.setPixelPWM(i,i,40)
             for i in range(11):
@@ -281,13 +280,13 @@ if __name__ == '__main__':
             matrix.setPixelPWM(11,11,100)
             matrix.setPixelPWM(11,11,100)
             matrix.setPixelPWM(6,11,100)
-
             # matrix.setPixelPWM(3,12,3)
             time.sleep(1);
+            print("all that done, now let's check for missing/short pixels.")
             print("missing pixels")
-            matrix.getOpenPixels()
+            print(matrix.getOpenPixels())
             print("short pixels")
-            matrix.getShortPixels()
+            print(matrix.getShortPixels())
         except Exception as e:
             print("Address",address,"error:",e)
             time.sleep(0.1)
