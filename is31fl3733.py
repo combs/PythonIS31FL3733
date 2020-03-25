@@ -44,7 +44,7 @@ class IS31FL3733(object):
         # key=value parameters
 
         if type (kwargs) is not None:
-          for key, value in kwargs.iteritems():
+          for key, value in kwargs.items():
               if type(value) is dict:
                   if getattr(self,key):
                         tempdict = getattr(self,key).copy()
