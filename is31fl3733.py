@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from constants import *
+from .constants import *
 from smbus2 import SMBus, i2c_msg
 import time
 
@@ -9,7 +9,7 @@ class IS31FL3733DeviceNotFound(IOError):
 
 class IS31FL3733(object):
 
-    address = 0x50
+    address = 0x50  
     busnum = 1
     syncmode = REGISTER_FUNCTION_CONFIGURATION_SYNC_CLOCK_SINGLE
     breathing = 0
