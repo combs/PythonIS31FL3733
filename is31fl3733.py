@@ -73,21 +73,10 @@ class IS31FL3733(object):
         if self.read(REGISTER_INTERRUPT_STATUS) > 3:
             raise TypeError('REGISTER_INTERRUPT_STATUS is an invalid value--is this IS31FL3733?')
 
-        # after any other command the write lock register should reset to 0
-        if self.read(REGISTER_COMMAND_WRITE_LOCK) != 0:
-            raise TypeError('REGISTER_COMMAND_WRITE_LOCK was not 0--is this IS31FL3733?')
-
         # 0xC0 is not a readable address in any of the registers
         # It doesn't return a read error, but does always return 0
         if self.read(0xC0) != 0:
             raise TypeError('Was able to read an address that should not be readable (0xC0)--is this IS31FL3733?')
-
-        # It accepts writes but returns 0 afterwards.
-        # So if this does otherwise, it's an EEPROM or something
-        try:
-            if self.read(0xC0) != 0:
-                self.write(0xC0, 0) # restore previous 0 value in case it matters
-                raise TypeError('Was able to write/read an address that should not be readable (0xC0)--is this IS31FL3733?')
 
         except IOError:
             # all's well.
