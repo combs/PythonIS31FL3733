@@ -78,10 +78,6 @@ class IS31FL3733(object):
         if self.read(0xC0) != 0:
             raise TypeError('Was able to read an address that should not be readable (0xC0)--is this IS31FL3733?')
 
-        except IOError:
-            # all's well.
-            pass
-
         # later IS31FL37xx devices support this...
 
         try:
