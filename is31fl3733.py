@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from .constants import *
+from constants import *
 from smbus2 import SMBus, i2c_msg
 import time
 
@@ -232,10 +232,12 @@ class IS31FL3733(object):
 
 
 if __name__ == '__main__':
+
     for address in range(0x50,0x60):
         print("trying",address)
         try:
-            matrix = IS31FL3733(address=address, busnum=10, DEBUG=True)
+            matrix = IS31FL3733(address=address, busnum=8, DEBUG=True)
+            matrix.setContrast(255)
             print("powering on all pixels")
             matrix.enableAllPixels()
             time.sleep(2)
