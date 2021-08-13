@@ -138,16 +138,12 @@ class IS31FL3733(object):
 
         # TODO set the values in the array
 
-        iter = 0
+        iterator = 0
         messages = []
 
         for chunk in self.chunks(values,32):
-            # self.writeBlock(iter*32,chunk)
-            # dest = [iter * 32, *chunk]
-            chunk.insert(0, iter * 32)
-            messages.append(i2c_msg.write(self.address, chunk))
-            # messages.append(i2c_msg.write(self.address, chunk))
-            iter += 1
+            messages.append(i2c_msg.write(self.address, iterator * 32 + chunk))
+            iterator += 1
 
         self.smbus.i2c_rdwr(*messages)
 
