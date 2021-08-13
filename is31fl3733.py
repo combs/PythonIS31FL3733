@@ -143,9 +143,10 @@ class IS31FL3733(object):
         messages = []
 
         for chunk in self.chunks(values, self.chunkSize):
-            messages.append(i2c_msg.write(self.address, bytes(iterator * self.chunkSize) + bytes(chunk)))
+            address = iterator * self.chunkSize
+            messages.append(i2c_msg.write(self.address, bytes([address]) + bytes(chunk)))
             iterator += 1
-
+            
         self.smbus.i2c_rdwr(*messages)
 
     def setAllPixels(self,values):
