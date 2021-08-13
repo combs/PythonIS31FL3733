@@ -20,6 +20,7 @@ class IS31FL3733(object):
     DEBUG = False
     lastDebug = ""
     name = "IS31FL3733"
+    chunkSize = 24
 
     def debug(self, *args):
         if self.DEBUG:
@@ -141,8 +142,8 @@ class IS31FL3733(object):
         iterator = 0
         messages = []
 
-        for chunk in self.chunks(values,32):
-            messages.append(i2c_msg.write(self.address, bytes(iterator * 32) + bytes(chunk)))
+        for chunk in self.chunks(values, self.chunkSize):
+            messages.append(i2c_msg.write(self.address, bytes(iterator * self.chunkSize) + bytes(chunk)))
             iterator += 1
 
         self.smbus.i2c_rdwr(*messages)
