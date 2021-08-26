@@ -21,6 +21,12 @@ class IS31FL3733(object):
     lastDebug = ""
     name = "IS31FL3733"
     chunkSize = 24
+    pixelsFlat = [0] * 192
+    incremental = False
+    chunksSent = 0
+    chunksSaved = 0
+
+    
 
     def debug(self, *args):
         if self.DEBUG:
@@ -66,6 +72,7 @@ class IS31FL3733(object):
         self.setContrast(255)
         self.triggerOpenShortDetection = True
         self.setConfiguration()
+        self.pixelsFlat = [0] * 192
         self.debug("Initialized.")
 
     def attemptDetection(self):
@@ -108,6 +115,7 @@ class IS31FL3733(object):
         self.selectPage(PAGE_FUNCTION)
         self.currentPage = PAGE_LEDONOFF
         self.debug("reset got",self.read(REGISTER_FUNCTION_RESET))
+        self.pixelsFlat = [0] * 192
 
     def enableAllPixels(self):
         self.selectPage(PAGE_LEDONOFF)
@@ -115,6 +123,7 @@ class IS31FL3733(object):
         self.selectPage(PAGE_LEDPWM)
         for i in range(0,12):
             self.writeBlock(i*16,[ 255 ] * (16))
+        self.pixelsFlat = [255] * 192
 
     def setPixelPower(self,row,col,val):
         address = row*2 + (col > 7)
@@ -141,13 +150,26 @@ class IS31FL3733(object):
 
         iterator = 0
         messages = []
+        last = list(self.chunks(self.pixelsFlat, self.chunkSize))
+        incremental = self.incremental
+        chunksSent = 0
+        chunksSaved = 0
 
-        for chunk in self.chunks(values, self.chunkSize):
-            address = iterator * self.chunkSize
-            messages.append(i2c_msg.write(self.address, bytes([address]) + bytes(chunk)))
-            iterator += 1
-            
-        self.smbus.i2c_rdwr(*messages)
+        for index, chunk in enumerate(self.chunks(values, self.chunkSize)):
+            address = index * self.chunkSize
+            if (not incremental) or (list(last[index]) != list(chunk)):
+                messages.append(i2c_msg.write(self.address, bytes([address]) + bytes(chunk)))
+                chunksSent += 1
+            else:
+                chunksSaved += 1
+        
+        self.chunksSent += chunksSent
+        self.chunksSaved += chunksSaved
+
+        if messages:
+            self.smbus.i2c_rdwr(*messages)
+
+        self.pixelsFlat = values
 
     def setAllPixels(self,values):
         self.debug("length is",len(values))
