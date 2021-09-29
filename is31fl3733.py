@@ -1,5 +1,5 @@
 from __future__ import print_function
-
+from builtins import bytes
 from .constants import *
 from smbus2 import SMBus, i2c_msg
 import time
